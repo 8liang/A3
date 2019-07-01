@@ -295,3 +295,5 @@ for row in datas:
 		get_product_id(row['product'], row['price'])
 for row in datas:
 	import_single(row)
+print_s("操作完成！")
+raw_input()
