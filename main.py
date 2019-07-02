@@ -1,21 +1,18 @@
-#!/usr/local/bin/python
-# -*- coding: UTF-8 -*-
-import ConfigParser
+#coding:utf-8
+import warnings
+warnings.filterwarnings('ignore')
+import configparser
 import xlrd
 import csv
 import pymssql
 import time
+import importlib
 import sys
-reload(sys)
+importlib.reload(sys)
 sys_type = sys.getfilesystemencoding()
-sys.setdefaultencoding('utf-8')
-config = ConfigParser.ConfigParser()
-config.readfp(open('config.ini'))
+config = configparser.ConfigParser()
+config.read_file(open('config.ini'))
 db_config = config.items('DB')
-# sa
-# Aa12345
-#GetMaxID 生成memberId
-#GetOrderID 生成订单Id
 
 fields = {'origin_id':0,'name':5, 'phone':6, 'address':7}
 csv_fields = ('origin_id','product','product_id','product_code','amount','price','freight','pay_type',
@@ -31,11 +28,11 @@ conn = pymssql.connect(
 	)
 
 def print_s(str):
-	print(str.decode('utf-8').encode(sys_type))
+	print(str)
 
 def load_csv(file_name):
 	datas = []
-	with open(file_name) as csvfile:
+	with open(file_name, 'r', encoding="gbk") as csvfile:
 		reader = csv.DictReader(csvfile, csv_fields)
 		next(reader)
 		for row in reader:
@@ -147,7 +144,6 @@ def get_member_id(phone, name, address):
 		'MemberTypeID':'2', 
 		'LastDatetime':now,
 		'AddDate':now,
-		'CheckDateTime':now,
 		'LastUpdateTime':time.strftime("%y%m%d%H%M%S100"),
 		'LastSeatNumber':'1',
 		'ConsultProductID':'1',
@@ -203,17 +199,18 @@ def generate_order_status(order, row):
 	now = time.strftime("%Y-%m-%d %H:%M:%S")
 	data = {
 		'SaleID':order['SaleID'],
-		'OrderID':order['OrderID'],
+		# 'OrderID':order['OrderID'],
 		'BeginDepartID':'1',
-		'CurrentDepartID':'5',
-		'OrderStatus':'501',
+		'CurrentDepartID':'4',
+		'OrderStatus':'401',
 		'OrderDate':order['OrderDate'],
-		'CancelStatus':'401',
+		'CancelStatus':'410',
 		'FinaCheckDate':now,
-		'GoodCheckDate':now,
-		'GoodCheckManID':'1',
-		'FinaMoneyDate':now,
-		'LastUpdateTime':time.strftime("%y%m%d%H%M%S100")
+		# 'GoodCheckDate':now,
+		'GoodCheckManID':'0',
+		'CheckEmployeeID':'-1',
+		# 'FinaMoneyDate':now,
+		'LastUpdateTime':'0'
 	}
 	insert_into('thing_OrderStatus', data)
 
@@ -222,13 +219,15 @@ def generate_order_success(order, row):
 		'SaleID':order['SaleID'],
 		'PayTypeID':'1',
 		'BankID':'0',
-		'TicketFlag':'0',
+		'TicketFlag':'不需要',
 		'SendDetailAddress':row['address'],
 		'ReceiveMan':row['name'],
 		'ContactMobile':enc_tel(row['phone']),
 		'ContactAllStar':row['phone'],
 		'note':row['origin_id'],
-		'TicketMemo':row['origin_id']
+		'TicketMemo':row['origin_id'],
+		'SendCompanyID':'0'
+
 	}
 	insert_into('thing_OrderSuccess', data)
 
@@ -251,17 +250,19 @@ def import_single(row):
 	
 	o = {
 		'SaleID':'%d'%sale_id,
-		'OrderID':order_id,
+		# 'OrderID':order_id,
 		'MemberFlag':'2',
 		'MemberID':'%d'%member_id,
 		'PhoneTypeID':'2',
 		'ConsultProductID':'%d'%get_product_id(row['product'], row['price']),
 		'EmployeeID':'1',
 		'OperatorID':'1',
+		'Memo':row['origin_id'],
+		'AdverDate':now,
 		'OrderDate':row['finished_at'],
 		'VisitEmployeeID':'1',
 		'TannelID':'8',
-		'CheckDate':now,
+		# 'CheckDate':now,
 		'AllReason':'订购',
 		'CallBackTime':now,
 		'EditTime':now,
@@ -279,8 +280,7 @@ def import_single(row):
 		'MediaTypeID':'8',
 		'FreightMoney':'0',
 		'DisCountMoney':'0',
-		'PayMoney':'%s'%row['price'],
-		'Memo':row['origin_id']
+		'PayMoney':'%s'%row['price']
 	}
 	insert_into('thing_OrderBasic', o)
 	generate_order_product(o, row)
@@ -296,4 +296,3 @@ for row in datas:
 for row in datas:
 	import_single(row)
 print_s("操作完成！")
-raw_input()
